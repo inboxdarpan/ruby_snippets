@@ -1,38 +1,37 @@
 #!/usr/bin/ruby
 
-# Static values 
 NUM_DICE = 5
-$score_ref_sheet = {1=>1000, 2=>100, 3=>300, 4=>400, 5=>500, 6=>600}
-$score_ref_sheet_1_5 = {1=>100, 5=>50}
+WINNING_THRESHOLD = 2000
+# Static values 
+$score_ref_sheet = { 1 => 1000, 2 => 100, 3 => 300, 4 => 400, 5 => 500, 6 => 600 }
+$score_ref_sheet_1_5 = { 1 => 100, 5 => 50 }
 $min_score_to_enter_game = 300
 $user_is_in_game = {}
 $score_board = {}
 
-print "------"
-
-#Intializes empty score variables
+# Intializes empty score variables
 def init(num_users)
-	(1..num_users).each do |i|
-		$score_board[i] = 0
-		$user_is_in_game[i] = false
-	end
+  (1..num_users).each do |i|
+    $score_board[i] = 0
+    $user_is_in_game[i] = false
+  end
 end
 
 # This function emulates a turn taken by each user to roll the die
 def roll(user_id)
-	puts "Rolling for user #{user_id}"
+  puts "Rolling for user #{user_id}"
 
-  _reset_score = false
-  total_score_of_this_roll = 0
-  dice_number_to_roll = NUM_DICE
+  @reset_score = false
+  _total_score_of_this_roll = 0
+  _dice_number_to_roll = NUM_DICE
   loop do 
-    dice_roll_result = roll_dice(dice_number_to_roll)
-    result_of_roll = calculate_score(user_id, dice_number_to_roll, dice_roll_result)
+    dice_roll_result = roll_dice(_dice_number_to_roll)
+    result_of_roll = calculate_score(user_id, _dice_number_to_roll, dice_roll_result)
     
     score_of_this_roll = result_of_roll[0]
 
-    if result_of_roll[1] == dice_number_to_roll
-      _reset_score = true
+    if result_of_roll[1] == _dice_number_to_roll
+      @reset_score = true
       break
     end
 
@@ -45,29 +44,29 @@ def roll(user_id)
       end
     end
 
-    total_score_of_this_roll += result_of_roll[0]
-    dice_number_to_roll = result_of_roll[1]
+    _total_score_of_this_roll += result_of_roll[0]
+    _dice_number_to_roll = result_of_roll[1]
 
-    if (dice_number_to_roll == 0) && (score_of_this_roll > 0) && ($user_is_in_game[user_id])
+    if (_dice_number_to_roll == 0) && (score_of_this_roll > 0) && ($user_is_in_game[user_id])
       dice_to_roll = NUM_DICE
     end
 
-    if dice_number_to_roll > 0
-      puts "#{dice_number_to_roll} non-scoring dice available, want to roll? (y/n) "
-      want_to_roll = gets.chomp
-      if want_to_roll != 'y'
+    if _dice_number_to_roll > 0
+      puts "#{_dice_number_to_roll} non-scoring dice available, want to roll? (y/n) "
+      _want_to_roll = gets.chomp.downcase
+      if _want_to_roll != 'y'
         break
       end
     end
-    break if dice_number_to_roll == 0 && !($user_is_in_game[user_id])
+    break if _dice_number_to_roll == 0 && !($user_is_in_game[user_id])
   end
-  if !(_reset_score)
-    $score_board[user_id] += total_score_of_this_roll
+  if !(@reset_score)
+    $score_board[user_id] += _total_score_of_this_roll
   else
-    total_score_of_this_roll = 0
+    _total_score_of_this_roll = 0
   end
 
-	puts "user #{user_id} scored #{total_score_of_this_roll} in this roll \n"
+	puts "user #{user_id} scored #{_total_score_of_this_roll} in this roll \n"
   puts "\n --------------------\n"
 end
 
@@ -82,7 +81,7 @@ end
 # This function calculates score of this roll based on dice roll results 
 # received from roll_dice()
 def calculate_score(user_id, num_dice, scores)
-	_reset_score = false
+	@reset_score = false
 	_non_scoring_dice_count = 0
 	final_score = 0
 	score_map = Hash.new(0)
@@ -96,47 +95,39 @@ def calculate_score(user_id, num_dice, scores)
 			if key ==1 or key == 5
 			else
 				_non_scoring_dice_count += number_of_dice - 3
-			end
-		elsif (key == 1 or key == 5)
-			final_score += number_of_dice * $score_ref_sheet_1_5[key]
+      end
+    elsif key == 1 || key == 5
+      final_score += number_of_dice * $score_ref_sheet_1_5[key]
 		elsif 
 			_non_scoring_dice_count += number_of_dice
-		end
-	end
+    end
+  end
 
-  puts "non scoring #{_non_scoring_dice_count} and num dice is #{num_dice}, score for this roll is #{final_score}" 
+  puts "non scoring #{_non_scoring_dice_count} and num dice is #{num_dice}, score for this roll is #{final_score}"
 	return final_score, _non_scoring_dice_count
 end
 
+# initializes values and starts the game
+def start_game
+  print 'Enter number of players '
+  num_players = Integer(gets.chomp)
+  puts "number of players #{num_players}\n\n"
 
-# Roll non-scoring die again
-def roll_non_scoring_die(user_id, non_scoring_die_count)
-	non_scoring_roll_result_score = 0
-	puts "#{non_scoring_die_count} non-scoring dice available, want to roll? (y/n) "
-	want_to_roll = gets.chomp
-	if want_to_roll == 'y'
-		non_scoring_roll_result_score = calculate_score(user_id, non_scoring_die_count, roll_dice(non_scoring_die_count))[0]
-	end
-	return non_scoring_roll_result_score
-end
+  init(num_players)
 
+  while $score_board.values.max < WINNING_THRESHOLD
+    (1..num_players).step(1) do |n|
+      roll(n)
+    end
+  end
 
-#start game
-print "Enter number of players "
-num_players = Integer(gets.chomp)
-puts "number of players #{num_players}\n\n"
-
-init(num_players)
-
-while ($score_board.values.max < 1500)
-	(1..num_players).step(1) do |n|
-		roll(n)
-	end
-end
-
-(1..num_players).step(1) do |n|
+  # One last roll before it reaches winning threshold scores
+  (1..num_players).step(1) do |n|
     roll(n)
+  end
+
+  puts "max score #{$score_board.values.max}, of user #{$score_board.key($score_board.values.max)}, Winner is in the house. "
 end
 
-puts "max score #{$score_board.values.max}, 
-  of user #{$score_board.key($score_board.values.max)}, Winner is in the house. "
+# Start_game
+start_game
